@@ -142,7 +142,8 @@ void simulation()
             // se nao ha free slot, preciso substituir um deles
             else
             {
-
+                // faz algo
+                continue;
             }
 
 

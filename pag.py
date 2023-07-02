@@ -44,7 +44,7 @@ class Memory:
         print(f"Endereço Virtual: {page_number*self.page_size + offset}, Endereço Físico: {physical_address}")
 
 
-# Exemplo de uso
+# Execução
 def simulate_virtual_memory(ram_size, page_size, process_size, algorithm, process):
     memory = Memory(ram_size, page_size)
 

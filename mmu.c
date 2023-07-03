@@ -1,9 +1,54 @@
 #include "globals.h"
 #include "mmu.h"
 
-void print_process_entry(process_entry pe)
+void page_table_report()
 {
-    printf("%d %d\n", pe.op, pe.address);
+    printf(" --------------------------------\n");
+    printf("|           PAGE TABLE           |\n");
+    printf("|--------------------------------|\n");
+    printf("| page | v | r | m | age | frame |\n");
+    for (int i = 0; i < total_virtual_pages; i++)
+    {
+        table_entry te = page_table[i];
+        printf("| %4d | ", i);
+        printf("%s | ", te.v ? "x" : " ");
+        printf("%s | ", te.r ? "x" : " ");
+        printf("%s | ", te.m ? "x" : " ");
+        te.v ? printf("%3d | ", te.age) : printf("    | ");
+        te.v ? printf("%5d |\n", te.frame) : printf("      |\n");
+    }
+    printf(" --------------------------------\n");
+}
+
+void ram_report()
+{
+    printf(" ---------------\n");
+    printf("|  RAM CONTENT  |\n");
+    printf("|---------------|\n");
+    printf("| frame | data  |\n");
+    for (int i = 0; i < ram_size; i++)
+    {
+        printf("| %5d | ", i / page_size);
+        ram[i] == -1 ? printf("      |\n") : printf("%5x |\n", ram[i]);
+    }
+
+    printf(" --------------\n");
+}
+
+void mmu_report()
+{
+    page_table_report();
+    ram_report();
+    printf("total page faults: %d\n", page_fault_count);
+}
+
+void reset_table_entry(table_entry *e)
+{
+    e->frame = -1;
+    e->v = false;
+    e->r = false;
+    e->m = false;
+    e->age = -1;
 }
 
 table_entry *new_page_table(int table_size)
@@ -11,58 +56,29 @@ table_entry *new_page_table(int table_size)
     table_entry *page_table = (table_entry*)malloc(table_size * sizeof(table_entry));
 
     for(int i = 0; i < table_size; i++)
-    {
-        page_table[i].frame = 0;
-        page_table[i].v = false;
-        page_table[i].r = false;
-        page_table[i].m = false;
-    }
+        reset_table_entry(&page_table[i]);
 
     return page_table;
 }
 
-void reset_table_entry(int pti)
+void update_control_fields()
 {
-    page_table[pti].v = false;
-    page_table[pti].r = false;
-    page_table[pti].m = false;
-}
-
-void print_table()
-{
-    printf(" --------------------------\n");
-    printf("| PAGE TABLE               |\n");
-    printf("|--------------------------|\n");
-    printf("| page | v | r | m | frame |\n");
     for(int i = 0; i < total_virtual_pages; i++)
     {
-        table_entry te = page_table[i];
-        printf("| %4d | ", i);
-        printf("%s | ", te.v ? "1" : " ");
-        printf("%s | ", te.r ? "1" : " ");
-        printf("%s | ", te.m ? "1" : " ");
-        te.v ? printf("%5d |\n", te.frame) : printf("      |\n");
+        if(page_table[i].v)
+        {
+            if(page_table[i].age > total_physical_frames)
+                page_table[i].r = false;
+            page_table[i].age++;
+        }
     }
-    printf(" --------------------------\n");
-}
-
-void print_ram()
-{
-    printf(" --------------\n");
-    printf("| RAM CONTENT  |\n");
-    printf("|--------------|\n");
-    printf("| frame | data |\n");
-    for(int i = 0; i < ram_size; i++)
-    {
-        printf("| %5d | ", i/page_size);
-        ram[i] == -1 ? printf("     |\n") : printf("%4d |\n", ram[i]);
-    }
-        
-    printf(" --------------\n");
 }
 
 void ram_access(int pti, int logical_address, op_code op)
 {
+    update_control_fields();
+    page_table[pti].r = true; // indico que houve acesso
+    page_table[pti].age = 0;  // zero a idade da entrada
     int offset = OFFSET(logical_address);
     int ra = RAM_ADDRESS(page_table[pti].frame, offset);
     if(op == WRITE)
@@ -76,9 +92,7 @@ void ram_access(int pti, int logical_address, op_code op)
 int find_free_slot()
 {
     for(int i = 0; i < ram_size; i+= page_size)
-    {
         if(ram[i] == -1) return i;
-    }
 
     return -1;
 }
@@ -99,25 +113,34 @@ void update_ram(int logical_address, int physical_address)
     // acesso base do quadro e copio a partir dai
     int da = DISK_ADDRESS(logical_address);
     for(int i = da; i < da+page_size; i++)
-    {
         ram[physical_address++] = disk[i];
-    }
 }
 
 void update_table(int pti, int logical_address, op_code op)
 {
     printf("added page %d to ram\n", pti);
     page_table[pti].v = true; // indico que agora a posicao eh valida
-    page_table[pti].r = true; // indico que houve acesso
-
     ram_access(pti, logical_address, op);
 }
 
-int fifo_policy(int pti)
+int fifo_policy()
 {
+    printf("FIFO: ");
     int victim = queue_front(&fifo);
     queue_pop(&fifo);
     return victim;    
+}
+
+int lru_policy()
+{
+    printf("LRU: ");
+    return -1;
+}
+
+int nru_policy()
+{
+    printf("NRU: ");
+    return -1;
 }
 
 void simulation()
@@ -129,13 +152,11 @@ void simulation()
         int addr = entries[p].address;
         int pti = PAGE_TABLE_INDEX(addr);
 
-        print_table();
-        print_ram();
-        printf("total page faults: %d\n", page_fault_count);
+        mmu_report();
         printf("\n--------------------- press key to continue\n");
         getchar();
         printf("op: %s | ", operation == READ ? "r" : "w");
-        printf("address: %d\n", addr);
+        printf("address: 0x%x\n", addr);
 
 
         // se for verdadeira, posso acessar a ram
@@ -166,21 +187,20 @@ void simulation()
         int victim;
         switch(algorithm)
         {
-            case FIFO: victim = fifo_policy(pti); break;
-            case LRU: break;
-            case SECOND_CHANCE: break;
+            case FIFO: victim = fifo_policy(); break;
+            case LRU:  victim = lru_policy();break;
+            case NRU:  victim = nru_policy();break;
         }
         
         page_table[pti].frame = page_table[victim].frame;
         slot = page_table[victim].frame * page_size;
+
         printf("page %d was chosen to be removed\n", victim);
         if(page_table[victim].m)
             printf("page %d was modified, write to disk\n", victim);
-        reset_table_entry(victim);
+        reset_table_entry(&page_table[victim]);
         update_table(pti, addr, operation);
         update_ram(addr, slot); 
     }
-    print_table();
-    print_ram();
-    printf("total page faults: %d\n", page_fault_count);
+    mmu_report();
 }

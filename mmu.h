@@ -16,12 +16,15 @@
 #define RAM_ADDRESS(frame, offset) (frame * page_size + offset)
 #define DISK_ADDRESS(logical_address) (logical_address - (logical_address % page_size))
 
-typedef enum {FIFO, LRU, SECOND_CHANCE} policy;
+typedef enum {FIFO, LRU, NRU} policy;
 typedef enum {READ, WRITE} op_code;
 
 typedef struct {
     int frame;
-    bool v, r, m; //valid, read, modified
+    bool v; // valid
+    bool r; // referenced
+    bool m; // modified
+    int age;
 } table_entry;
 
 typedef struct {
@@ -29,10 +32,7 @@ typedef struct {
     int address;
 } process_entry;
 
-void print_process_entry(process_entry pe);
 table_entry *new_page_table(int table_size);
-void print_table_entry(table_entry te);
-int find_free_slot();
 void simulation();
 
 #endif

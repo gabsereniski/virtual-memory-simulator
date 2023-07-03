@@ -11,9 +11,9 @@ void page_table_report()
     {
         table_entry te = page_table[i];
         printf("| %4d | ", i);
-        printf("%s | ", te.v ? "x" : " ");
-        printf("%s | ", te.r ? "x" : " ");
-        printf("%s | ", te.m ? "x" : " ");
+        printf("%s | ", te.v ? "#" : " ");
+        printf("%s | ", te.r ? "#" : " ");
+        printf("%s | ", te.m ? "#" : " ");
         te.v ? printf("%3d | ", te.age) : printf("    | ");
         te.v ? printf("%5d |\n", te.frame) : printf("      |\n");
     }
@@ -83,7 +83,7 @@ void ram_access(int pti, int logical_address, op_code op)
     int ra = RAM_ADDRESS(page_table[pti].frame, offset);
     if(op == WRITE)
     {
-        printf("write to %x\n", ra);
+        printf("write operation on page %x\n", ra);
         page_table[pti].m = true;
     }
     printf("virtual address 0x%x -> physical address 0x%x\n\n", logical_address, ra);
@@ -101,7 +101,7 @@ bool page_on_ram(int pti, int addr, op_code op)
 {
     if(page_table[pti].v == false) return false;
 
-    printf("page %d on ram\n", pti);
+    printf("address %d is referenced by loaded page %d\n", addr, pti);
     
     ram_access(pti, addr, op);
 
@@ -118,7 +118,7 @@ void update_ram(int logical_address, int physical_address)
 
 void update_table(int pti, int logical_address, op_code op)
 {
-    printf("added page %d to ram\n", pti);
+    printf("loaded page %d to ram\n", pti);
     page_table[pti].v = true; // indico que agora a posicao eh valida
     ram_access(pti, logical_address, op);
 }
@@ -134,13 +134,31 @@ int fifo_policy()
 int lru_policy()
 {
     printf("LRU: ");
-    return -1;
+    int victim = -1;
+    int max_age = -1;
+    for(int i = 0; i < total_virtual_pages; i++)
+    {
+        if(page_table[i].v && page_table[i].age > max_age)
+            max_age = page_table[i].age, victim = i;
+    }
+    return victim;
 }
 
 int nru_policy()
 {
-    printf("NRU: ");
-    return -1;
+    int victim = -1;
+    int min_category = 4;
+    int max_age = -1;
+    for(int i = 0; i < total_virtual_pages; i++)
+    {
+        if(page_table[i].v)
+        {
+            int category = (page_table[i].r << 1) | page_table[i].m;
+            if(category <= min_category && page_table[i].age > max_age) 
+                min_category = category, max_age = page_table[i].age, victim = i;
+        }
+    }
+    return victim;
 }
 
 void simulation()
@@ -155,8 +173,8 @@ void simulation()
         mmu_report();
         printf("\n--------------------- press key to continue\n");
         getchar();
-        printf("op: %s | ", operation == READ ? "r" : "w");
-        printf("address: 0x%x\n", addr);
+        printf("op: %s, ", operation == READ ? "r" : "w");
+        printf("address: 0x%x\n\n", addr);
 
 
         // se for verdadeira, posso acessar a ram
@@ -165,7 +183,7 @@ void simulation()
         // atualizo a fila do fifo
         if(algorithm == FIFO) queue_push(&fifo, pti);
 
-        printf("not on ram - page fault\n");
+        printf("PAGE FAULT - address 0x%x is not on ram\n", addr);
         page_fault_count++;
 
         // verifico se ha espaco livre
@@ -173,7 +191,7 @@ void simulation()
         // se encontro, copio as informacoes do disco para a ram
         if(slot != -1)
         {
-            printf("free space on ram\n");
+            printf("free space available\n");
             // indico que apartir de agora o frame se encontra no slot anteriormente vazio
             page_table[pti].frame = slot / page_size;
             update_table(pti, addr, operation);            
@@ -182,6 +200,7 @@ void simulation()
             continue;
         }
 
+        printf("no free space available\n");
         // se nao ha free slot, preciso substituir um deles
         // escolhe a pagina vitima de acordo com a politica de substituicao
         int victim;

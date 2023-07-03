@@ -39,7 +39,7 @@ int main(int argc, char **argv)
     }
 
     algorithm = atoi(argv[4]);
-    if(algorithm < FIFO || algorithm > NRU)
+    if(algorithm < FIFO || algorithm > SECOND_CHANCE)
     {
         printf("INVALID ALGORITHM, USING FIFO INSTEAD\n");
         algorithm = FIFO;

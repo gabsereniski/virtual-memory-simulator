@@ -168,7 +168,7 @@ void simulation()
         {
             case FIFO: victim = fifo_policy(pti); break;
             case LRU: break;
-            case SECOND_CHANCE: break;
+            case NRU: break;
         }
         
         page_table[pti].frame = page_table[victim].frame;

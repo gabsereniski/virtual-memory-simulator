@@ -16,7 +16,7 @@
 #define RAM_ADDRESS(frame, offset) (frame * page_size + offset)
 #define DISK_ADDRESS(logical_address) (logical_address - (logical_address % page_size))
 
-typedef enum {FIFO, LRU, SECOND_CHANCE} policy;
+typedef enum {FIFO, LRU, NRU} policy;
 typedef enum {READ, WRITE} op_code;
 
 typedef struct {

@@ -65,12 +65,6 @@ int main(int argc, char **argv)
             continue;
         }
 
-        if(address < 0 || address >= process_size)
-        {
-            printf("INVALID ADDRESS [%d], ENTRY WILL BE IGNORED\n", address);
-            continue;
-        }
-
         entries[process_len].op = op;
         entries[process_len++].address = address;
     }

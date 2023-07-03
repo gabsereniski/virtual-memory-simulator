@@ -223,7 +223,12 @@ void simulation()
         if(step_by_step) simulation_report();
         if(step_by_step) printf("op: %s, ", operation == READ ? "r" : "w");
         if(step_by_step) printf("address: 0x%x\n\n", addr);
-
+        
+        if(addr >= process_size)
+        {
+            printf("SEGMENTATION FAULT - invalid address [%x]\n", addr);
+            exit(1);
+        }
 
         // se índice for válido, RAM é acessada
         if(page_on_ram(pti, addr, operation)) continue;

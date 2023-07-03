@@ -14,3 +14,5 @@ int process_len = 0;
 
 queue fifo;
 int page_fault_count = 0;
+
+int step_by_step = 0;

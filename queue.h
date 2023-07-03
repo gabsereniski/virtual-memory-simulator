@@ -1,3 +1,5 @@
+// estrutura de fila para implementação do FIFO
+
 #ifndef QUEUE_H
 #define QUEUE_H
 
@@ -7,6 +9,7 @@ typedef struct {
     int data[MAX_SIZE];
     int front;
     int back;
+    int is_full;
 } queue;
 
 void queue_init(queue *queue);

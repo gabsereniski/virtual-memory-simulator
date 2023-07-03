@@ -29,4 +29,7 @@ extern queue fifo;
 // contador de faltas de página
 extern int page_fault_count;
 
+// indica se passos da execução deverão ser exibidos ou não
+extern int step_by_step;
+
 #endif

@@ -3,16 +3,17 @@
 #include "queue.h"
 
 void queue_init(queue *queue) {
-    queue->front = -1;
-    queue->back = -1;
-}
-
-int queue_is_full(queue *queue) {
-    return (queue->back == MAX_SIZE - 1);
+    queue->front = 0;
+    queue->back = 0;
+    queue->is_full = 0;
 }
 
 int queue_is_empty(queue *queue) {
-    return (queue->front == -1 || queue->front > queue->back);
+    return (queue->front == queue->back && !queue->is_full);
+}
+
+int queue_is_full(queue *queue) {
+    return queue->is_full;
 }
 
 void queue_push(queue *queue, int value) {
@@ -20,12 +21,12 @@ void queue_push(queue *queue, int value) {
         return;
     }
 
-    if (queue_is_empty(queue)) {
-        queue->front = 0;
-    }
-
-    queue->back++;
     queue->data[queue->back] = value;
+    queue->back = (queue->back + 1) % MAX_SIZE;
+
+    if (queue->back == queue->front) {
+        queue->is_full = 1;
+    }
 }
 
 int queue_pop(queue *queue) {
@@ -34,11 +35,8 @@ int queue_pop(queue *queue) {
     }
 
     int value = queue->data[queue->front];
-    queue->front++;
-
-    if (queue->front > queue->back) {
-        queue_init(queue);
-    }
+    queue->front = (queue->front + 1) % MAX_SIZE;
+    queue->is_full = 0;
 
     return value;
 }

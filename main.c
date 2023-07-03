@@ -78,6 +78,16 @@ int main(int argc, char **argv)
     fclose(trace_file);
     // --------------------------------------------------------------------------------------- LEITURA DO TRACE
 
+    system("clear");
+    printf("show execution steps? (any key - yes, 0 - no) ");
+    // evita que o programa avance se o usuário insira um caracter
+    int char_bug = scanf("%d", &step_by_step);
+    if(char_bug != 1) 
+    {
+        int c;
+        while ((c = getchar()) != '\n' && c != EOF);
+    }
+
     // preenche o disco com o espaço de endereçamento do processo
     // preenche a partir do início do disco, para facilitar a implementação
     for(int i = 0; i < process_size; i++)

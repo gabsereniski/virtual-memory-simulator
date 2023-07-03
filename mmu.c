@@ -1,6 +1,8 @@
 #include "globals.h"
 #include "mmu.h"
 
+// imprime dados armazenados na tabela de páginas
+// assinala campos ativos, não imprime páginas inválidas para facilitar visualização
 void page_table_report()
 {
     printf(" --------------------------------\n");
@@ -20,6 +22,7 @@ void page_table_report()
     printf(" --------------------------------\n");
 }
 
+// imprime dados armazenados na ram
 void ram_report()
 {
     printf(" ---------------\n");
@@ -35,11 +38,15 @@ void ram_report()
     printf(" --------------\n");
 }
 
-void mmu_report()
+// imprime relatório da simulação
+void simulation_report()
 {
     page_table_report();
     ram_report();
     printf("total page faults: %d\n", page_fault_count);
+
+    printf("\n--------------------- press key to continue\n");
+    getchar();
 }
 
 int *init_ram(int ram_size)
@@ -52,6 +59,7 @@ int *init_ram(int ram_size)
     return ram_array; 
 }
 
+// reinicializa entrada da tabela de páginas
 void reset_table_entry(table_entry *e)
 {
     e->frame = -1;
@@ -61,6 +69,7 @@ void reset_table_entry(table_entry *e)
     e->age = -1;
 }
 
+// aloca e inicializa estrutura da tabela de páginas
 table_entry *new_page_table(int table_size)
 {  
     table_entry *page_table = (table_entry*)malloc(table_size * sizeof(table_entry));
@@ -71,6 +80,7 @@ table_entry *new_page_table(int table_size)
     return page_table;
 }
 
+// atualiza campos de controle (r, age)
 void update_control_fields()
 {
     for(int i = 0; i < total_virtual_pages; i++)
@@ -84,21 +94,25 @@ void update_control_fields()
     }
 }
 
+// acessa memória ram, a partir do endereço lógico e do frame armazenado na tabela de páginas
 void ram_access(int pti, int logical_address, op_code op)
 {
-    update_control_fields();
-    page_table[pti].r = true; // indico que houve acesso
-    page_table[pti].age = 0;  // zero a idade da entrada
-    int offset = OFFSET(logical_address);
-    int ra = RAM_ADDRESS(page_table[pti].frame, offset);
+    update_control_fields();    // atualiza campos de controle sempre que há acesso
+    page_table[pti].r = true;   // assinala que houve acesso
+    page_table[pti].age = 0;    // zera a idade da entrada, pois houve acesso recente
+    int offset = OFFSET(logical_address);                   // calcula offset
+    int ra = RAM_ADDRESS(page_table[pti].frame, offset);    // calcula endereço da ram
     if(op == WRITE)
     {
-        printf("write operation on page %x\n", ra);
+        // assinala que houve escrita (ativa bit m)
+        if(step_by_step) printf("write operation on page %x\n", ra);
         page_table[pti].m = true;
     }
-    printf("virtual address 0x%x -> physical address 0x%x\n\n", logical_address, ra);
+    // apresenta conversão de endereços
+    if(step_by_step) printf("virtual address 0x%x -> physical address 0x%x\n\n", logical_address, ra);
 }
 
+// procura quadro vazio na ram, quadros vazios inicializam em -1
 int find_free_slot()
 {
     for(int i = 0; i < ram_size; i+= page_size)
@@ -107,64 +121,91 @@ int find_free_slot()
     return -1;
 }
 
+// verifica se página está na ram
 bool page_on_ram(int pti, int addr, op_code op)
 {
+    // se não está, precisa ser carregada
     if(page_table[pti].v == false) return false;
 
-    printf("address %d is referenced by loaded page %d\n", addr, pti);
-    
+    // se está, indica que o endereço está carregado, realiza acesso e retorna verdadeiro
+    if(step_by_step) printf("address %d is referenced by loaded page %d\n", addr, pti);  
     ram_access(pti, addr, op);
 
     return true;
 }
 
-void update_ram(int logical_address, int physical_address)
+// carrega dados do disco na ram
+void load_frame(int logical_address, int physical_address)
 {
-    // acesso base do quadro e copio a partir dai
+    // acessa base do quadro e copia a partir dai
     int da = DISK_ADDRESS(logical_address);
-    for(int i = da; i < da+page_size; i++)
+    for(int i = da; i < da + page_size; i++)
         ram[physical_address++] = disk[i];
 }
 
-void update_table(int pti, int logical_address, op_code op)
+// atualiza entrada da tabela ao ser carregada
+void update_table_entry(int pti, int logical_address, op_code op)
 {
-    printf("loaded page %d to ram\n", pti);
-    page_table[pti].v = true; // indico que agora a posicao eh valida
+    if(step_by_step) printf("loaded page %d to ram\n", pti);
+    page_table[pti].v = true; // assinala que agora a posicao eh valida
     ram_access(pti, logical_address, op);
 }
 
+// politica de substituição FIFO
 int fifo_policy()
 {
-    printf("FIFO: ");
-    int victim = queue_front(&fifo);
-    queue_pop(&fifo);
+    if(step_by_step) printf("FIFO: ");
+    int victim = queue_front(&fifo); // seleciona início página do início da fila como vítima
+    queue_pop(&fifo);                // remove página da fila
     return victim;    
 }
 
+// politica de substituição LRU
 int lru_policy()
 {
-    printf("LRU: ");
+    if(step_by_step) printf("LRU: ");
     int victim = -1;
     int max_age = -1;
     for(int i = 0; i < total_virtual_pages; i++)
     {
+        // seleciona página mais "velha" entre as validas
         if(page_table[i].v && page_table[i].age > max_age)
             max_age = page_table[i].age, victim = i;
     }
     return victim;
 }
 
+// politica de substituição NRU
 int nru_policy()
 {
+    /*
+                        CATEGORIAS [Maziero]: 
+
+        (R = 0, M = 0): páginas que não foram referenciadas recentemente e cujo
+                        conteúdo não foi modificado. São as melhores candidatas à substituição, pois
+                        podem ser simplesmente retiradas da memória.
+
+        (R = 0, M = 1): páginas que não foram referenciadas recentemente, mas cujo
+                        conteúdo já foi modificado. Não são escolhas tão boas, porque terão de ser
+                        gravadas na área de troca antes de serem substituídas.
+
+        (R = 1, M = 0): páginas referenciadas recentemente, cujo conteúdo permanece
+                        inalterado. São provavelmente páginas de código que estão sendo usadas
+                        ativamente e serão referenciadas novamente em breve.
+
+        (R = 1, M = 1): páginas referenciadas recentemente e cujo conteúdo foi
+                        modificado. São a pior escolha, porque terão de ser gravadas na área de troca e
+                        provavelmente serão necessárias em breve.
+    */
     int victim = -1;
-    int min_category = 4;
+    int min_category = 0b100;
     int max_age = -1;
     for(int i = 0; i < total_virtual_pages; i++)
     {
         if(page_table[i].v)
         {
-            int category = (page_table[i].r << 1) | page_table[i].m;
-            if(category <= min_category && page_table[i].age > max_age) 
+            int category = (page_table[i].r << 1) | page_table[i].m;    // calcula categoria com os campos r e m
+            if(category <= min_category && page_table[i].age > max_age) // escolhe página de menor categoria e maior idade
                 min_category = category, max_age = page_table[i].age, victim = i;
         }
     }
@@ -175,44 +216,44 @@ void simulation()
 {
     for(int p = 0; p < process_len; p++)
     {
-        // acesso tabela de paginas e verifico a validade
         op_code operation = entries[p].op;
         int addr = entries[p].address;
-        int pti = PAGE_TABLE_INDEX(addr);
+        int pti = PAGE_TABLE_INDEX(addr);   // calcula índice da tabela de páginas
 
-        mmu_report();
-        printf("\n--------------------- press key to continue\n");
-        getchar();
-        printf("op: %s, ", operation == READ ? "r" : "w");
-        printf("address: 0x%x\n\n", addr);
+        if(step_by_step) simulation_report();
+        if(step_by_step) printf("op: %s, ", operation == READ ? "r" : "w");
+        if(step_by_step) printf("address: 0x%x\n\n", addr);
 
 
-        // se for verdadeira, posso acessar a ram
+        // se índice for válido, RAM é acessada
         if(page_on_ram(pti, addr, operation)) continue;
 
-        // atualizo a fila do fifo
-        if(algorithm == FIFO) queue_push(&fifo, pti);
-
-        printf("PAGE FAULT - address 0x%x is not on ram\n", addr);
+        // se não, é necessário carregar um quadro
+        if(step_by_step) printf("PAGE FAULT - address 0x%x is not on ram\n", addr);
         page_fault_count++;
 
-        // verifico se ha espaco livre
+        // atualiza a fila do FIFO se ele foi o algoritmo de substituição selecionado
+        if(algorithm == FIFO) queue_push(&fifo, pti);
+        
+        // verifica se há espaco livre na RAM
         int slot = find_free_slot();
-        // se encontro, copio as informacoes do disco para a ram
+        // se sim, copia as informacoes do disco para a RAM
         if(slot != -1)
         {
-            printf("free space available\n");
-            // indico que apartir de agora o frame se encontra no slot anteriormente vazio
+            if(step_by_step) printf("free space available\n");
+            // carrega dados do disco na RAM
+            load_frame(addr, slot);
+            // atualiza ponteiros da tabela de páginas para apontar para o espaço préviamente vazio
             page_table[pti].frame = slot / page_size;
-            update_table(pti, addr, operation);            
-            update_ram(addr, slot);
+            // atualiza informações de acesso e realiza acesso
+            update_table_entry(pti, addr, operation);
                   
             continue;
         }
 
-        printf("no free space available\n");
-        // se nao ha free slot, preciso substituir um deles
-        // escolhe a pagina vitima de acordo com a politica de substituicao
+        if(step_by_step) printf("no free space available\n");
+        // se nao há espaço livre, substituição de quadros é necessária
+        // escolhe a página vítima de acordo com a politica de substituição selecionada
         int victim;
         switch(algorithm)
         {
@@ -221,15 +262,24 @@ void simulation()
             case NRU:  victim = nru_policy();break;
         }
         
+        // aponta para o frame da vítima, pois ele será substituído
         page_table[pti].frame = page_table[victim].frame;
+        // calcula endereço base do quadro da ram que será sobrescrito
         slot = page_table[victim].frame * page_size;
 
-        printf("page %d was chosen to be removed\n", victim);
+        if(step_by_step) printf("page %d was chosen to be removed\n", victim);
+        // se o quadro que será removido fora modificado, indica que escrita no disco é necessária
         if(page_table[victim].m)
-            printf("page %d was modified, write to disk\n", victim);
+            if(step_by_step) printf("page %d was modified, write to disk\n", victim);
+        
+        // carrega dados do disco na ram
+        load_frame(addr, slot); 
+        // reinicializa informações da página vítima
         reset_table_entry(&page_table[victim]);
-        update_table(pti, addr, operation);
-        update_ram(addr, slot); 
+        // atualiza informações da página recem carregada
+        update_table_entry(pti, addr, operation);
     }
-    mmu_report();
+
+    if(step_by_step) simulation_report();
+    else             printf("total page faults: %d\n", page_fault_count);
 }

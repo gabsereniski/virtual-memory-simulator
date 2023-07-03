@@ -10,7 +10,7 @@ int *ram;
 table_entry *page_table;
 
 process_entry entries[DISK_SIZE];
-int process_len = 0; // numero de instrucoes do processo
+int process_len = 0;
 
 queue fifo;
 int page_fault_count = 0;

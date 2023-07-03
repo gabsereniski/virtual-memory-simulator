@@ -13,7 +13,7 @@ int main(int argc, char **argv)
     {
         printf("USE: ./$ <ram_size> <page_size> <process_size> <algorithm> <trace_file>\n");
         printf("MAX SIZES: RAM = %d; PAGE = %d, PROCESS = %d\n", MAX_RAM_SIZE, MAX_PAGE_SIZE, MAX_PROCESS_SIZE);
-        printf("<algorithm> values: 0 - FIFO; 1 - LRU; 2 - second chance\n");
+        printf("algorithm values: \n0 - FIFO; \n1 - LRU; \n2 - NRU\n");
         exit(0);
     }
 
@@ -76,26 +76,25 @@ int main(int argc, char **argv)
     }
 
     fclose(trace_file);
-
     // --------------------------------------------------------------------------------------- LEITURA DO TRACE
 
-    // preenche o disco com enderecos
+    // preenche o disco com o espaço de endereçamento do processo
+    // preenche a partir do início do disco, para facilitar a implementação
     for(int i = 0; i < process_size; i++)
         disk[i] = i; 
 
-    // numero total de paginas
-    total_virtual_pages = process_size / page_size;
-    // numero total de frames
-    total_physical_frames = ram_size / page_size;
+    total_virtual_pages = process_size / page_size; // numero total de páginas
+    total_physical_frames = ram_size / page_size;   // numero total de quadros
 
-    // aloca memoria ram
-    ram = (int*)malloc(ram_size * sizeof(int));
-    memset(ram, -1, ram_size * sizeof(int)); // enderecos invalidos
-    // aloca tabela de paginas
+    // aloca o vetor que representa a memória ram
+    ram = init_ram(ram_size);
+    // aloca a estrutura da tabela de páginas
     page_table = new_page_table(total_virtual_pages);
 
+    // inicializa a estrutura de fila, caso o algoritmo selecionado seja o FIFO
     if(algorithm == FIFO) queue_init(&fifo);
 
+    // executa a simulação
     simulation();
 
     return 0;

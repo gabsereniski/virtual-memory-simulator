@@ -42,6 +42,16 @@ void mmu_report()
     printf("total page faults: %d\n", page_fault_count);
 }
 
+int *init_ram(int ram_size)
+{
+    // aloca o vetor que representa a memória ram
+    int *ram_array = (int*)malloc(ram_size * sizeof(int));
+    // seta todos os endereços como inválidos
+    memset(ram_array, -1, ram_size * sizeof(int));
+    
+    return ram_array; 
+}
+
 void reset_table_entry(table_entry *e)
 {
     e->frame = -1;

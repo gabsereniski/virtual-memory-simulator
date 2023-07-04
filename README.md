@@ -10,7 +10,7 @@
 Data de finalização: 03/06/2023
 
 ### Sobre
-Aplicativo de console que simula as estruturas de uma memória virtual e o que acontece quando ocorre falta de página, de acordo com a política de substituição selecionada. O usuário escolhe se deseja mostrar os passos da simulação ou não. Se ele optar por exibi-las, o programa apresenta o estado da tabela de páginas e da RAM quando uma instrução é executada. O simulador conta e exibe o número de faltas de página dado a sequencia de acessos à RAM.
+Aplicativo de console que simula as estruturas de uma memória virtual e o que acontece quando ocorre falta de página, de acordo com a política de substituição selecionada. O usuário escolhe se deseja mostrar os passos da simulação ou não. Se ele optar por exibí-las, o programa apresenta o estado da tabela de páginas e da RAM quando uma instrução é executada. O simulador conta e exibe o número de faltas de página dado a sequencia de acessos à RAM.
 
 ### Execução
 Para compilar, basta executar `make` no diretório do código fonte.

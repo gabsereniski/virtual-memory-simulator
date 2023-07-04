@@ -178,6 +178,7 @@ int lru_policy()
 // politica de substituição NRU
 int nru_policy()
 {
+    if(step_by_step) printf("NRU: ");
     /*
                         CATEGORIAS [Maziero]: 
 

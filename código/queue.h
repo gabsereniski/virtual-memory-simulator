@@ -1,3 +1,10 @@
+/*
+    Estrutura de fila em vetor circular
+    Autores: Gabriela Paola Sereniski
+             João Victor Salvi Silva
+    Data de criação: 03/07/2023
+*/
+
 // estrutura de fila para implementação do FIFO
 
 #ifndef QUEUE_H

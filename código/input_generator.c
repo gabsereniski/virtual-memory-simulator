@@ -1,6 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+/*
+    Gerador de trace para o simulador de memória virtual
+    Autores: Gabriela Paola Sereniski
+             João Victor Salvi Silva
+    Data de criação: 03/07/2023
+*/
+
 #include <time.h>
 
 void generate_trace(int n, int max) 

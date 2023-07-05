@@ -2,7 +2,6 @@
     Simulador para Memória Virutal e Algoritmos de Substituição de Página
     Autores: Gabriela Paola Sereniski
              João Victor Salvi Silva
-    Data de criação: 03/07/2023
 */
 
 #include <stdio.h>

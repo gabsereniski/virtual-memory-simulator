@@ -78,7 +78,6 @@ int main(int argc, char **argv)
     fclose(trace_file);
     // --------------------------------------------------------------------------------------- LEITURA DO TRACE
 
-    system("clear");
     printf("show execution steps? (any key - yes, 0 - no) ");
     // evita que o programa avance se o usuário insira um caracter
     int char_bug = scanf("%d", &step_by_step);

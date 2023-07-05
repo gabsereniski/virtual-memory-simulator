@@ -1,11 +1,12 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 /*
     Gerador de trace para o simulador de memória virtual
     Autores: Gabriela Paola Sereniski
              João Victor Salvi Silva
 */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include <time.h>
 
